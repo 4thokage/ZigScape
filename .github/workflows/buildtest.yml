@@ -11,7 +11,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     name: Build and Test
-    steps:
+    steps:      
+      - name: Build and Test
       - uses: actions/checkout@v3
       - uses: mlugg/setup-zig@v2
+      - run: sudo apt-get update && sudo apt-get install -y wayland-protocols
       - run: zig build test

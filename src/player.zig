@@ -60,56 +60,56 @@ pub const Player = struct {
         };
     }
 
-    pub fn update(self: *Player, world: *const World) void {
-        if (self.true_tile.equals(self.target_tile)) {
-            const target_px: f32 = @floatFromInt(self.true_tile.x * World.TILE_SIZE);
-            const target_py: f32 = @floatFromInt(self.true_tile.y * World.TILE_SIZE);
+    // Queue a path to move along
+    pub fn setTarget(self: *Player, world: World, grid_target: Point) void {
+        if (Pathfinder.findPath(self.true_tile, grid_target, world)) |p| {
+            self.path = p;
+            self.target_tile = self.path[0];
+        } else |_| {
+            self.path = &[_]Point{};
+            self.target_tile = self.true_tile;
+        }
+    }
 
-            const t: f32 = 0.04; // NICE hardcoded number zezadas
+    // Consume the next tile in the path — called per tick
+    pub fn consumeNextPathTile(self: *Player) void {
+        if (self.path.len == 0) return;
 
-            self.x = self.x + (target_px - self.x) * t;
-            self.y = self.y + (target_py - self.y) * t;
-            self.state = PlayerState.Idle;
-        } else {
-            const target_px: f32 = @floatFromInt(self.target_tile.x * World.TILE_SIZE);
-            const target_py: f32 = @floatFromInt(self.target_tile.y * World.TILE_SIZE);
+        // Advance logical target
+        self.true_tile = self.path[0];
+        self.path = self.path[1..];
 
-            const dx = target_px - self.x;
-            const dy = target_py - self.y;
-            const distance = @sqrt(dx * dx + dy * dy);
+        // x/y are still visual, will interpolate to new target
+        self.target_tile = self.true_tile;
+    }
 
-            if (distance > 0) {
-                const dir_x = dx / distance;
-                const dir_y = dy / distance;
-                const move_speed = self.speed * rl.getFrameTime();
+    // Interpolate sprite smoothly toward target_tile every frame
+    pub fn updateVisual(self: *Player, dt: f32) void {
+        const target_px: f32 = @floatFromInt(self.target_tile.x * World.TILE_SIZE);
+        const target_py: f32 = @floatFromInt(self.target_tile.y * World.TILE_SIZE);
 
-                const next_x = self.x + dir_x * move_speed;
-                const next_y = self.y + dir_y * move_speed;
+        const dx = target_px - self.x;
+        const dy = target_py - self.y;
+        const distance = @sqrt(dx * dx + dy * dy);
 
-                const next_tile_x = @as(i32, @intFromFloat(@floor((next_x + (World.TILE_SIZE / 2)) / World.TILE_SIZE)));
-                const next_tile_y = @as(i32, @intFromFloat(@floor((next_y + (World.TILE_SIZE / 2)) / World.TILE_SIZE)));
-                const next_tile = Point.init(next_tile_x, next_tile_y);
-
-                if (world.isTileWalkable(next_tile)) {
-                    self.x = next_x;
-                    self.y = next_y;
-                    self.true_tile = next_tile;
-                } else {
-                    self.state = PlayerState.Idle;
-                    return;
-                }
-
-                if (@abs(dx) > @abs(dy)) {
-                    self.state = if (dx > 0) PlayerState.WalkRight else PlayerState.WalkLeft;
-                } else {
-                    self.state = if (dy > 0) PlayerState.WalkDown else PlayerState.WalkUp;
-                }
+        if (distance > 0.0) {
+            const move_speed = self.speed * dt;
+            if (move_speed < distance) {
+                self.x += dx / distance * move_speed;
+                self.y += dy / distance * move_speed;
             } else {
                 self.x = target_px;
                 self.y = target_py;
-                self.true_tile = self.target_tile;
-                self.state = PlayerState.Idle;
             }
+
+            // update state for animation
+            if (@abs(dx) > @abs(dy)) {
+                self.state = if (dx > 0) PlayerState.WalkRight else PlayerState.WalkLeft;
+            } else {
+                self.state = if (dy > 0) PlayerState.WalkDown else PlayerState.WalkUp;
+            }
+        } else {
+            self.state = PlayerState.Idle;
         }
 
         self.active_animation = switch (self.state) {
@@ -122,19 +122,9 @@ pub const Player = struct {
         self.active_animation.update();
     }
 
-    pub fn setTarget(self: *Player, world: World, grid_target: Point) void {
-        if (Pathfinder.findPath(self.true_tile, grid_target, world)) |p| {
-            self.path = p;
-        } else |_| {
-            self.path = &[_]Point{};
-        }
-        self.target_tile = grid_target;
-    }
-
     pub fn draw(self: *Player, texture: rl.Texture2D) void {
-
-        // Player Sprite
         const frame = self.active_animation.frame(15);
+
         rl.drawTexturePro(
             texture,
             frame,
@@ -157,16 +147,5 @@ pub const Player = struct {
             .height = World.TILE_SIZE,
         };
         rl.drawRectangleLinesEx(tile_rect, 1, rl.Color.red);
-
-        // Draw current path
-        for (self.path) |tile| {
-            rl.drawRectangle(
-                tile.x * World.TILE_SIZE,
-                tile.y * World.TILE_SIZE,
-                World.TILE_SIZE,
-                World.TILE_SIZE,
-                rl.Color.pink,
-            );
-        }
     }
 };

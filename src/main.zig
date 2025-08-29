@@ -9,6 +9,7 @@ const Config = struct {
     windowWidth: i32 = 320,
     windowHeight: i32 = 180,
     fps: i32 = 60,
+    tickDuration: f32 = 0.6,
 };
 
 pub fn main() !void {
@@ -38,15 +39,19 @@ pub fn main() !void {
     const playerTexture = try rl.loadTexture("assets/hero/00_hero_naked.png");
     defer rl.unloadTexture(playerTexture);
 
-    var player = Player.init(allocator, Point.init(2, 2), 20.0);
+    var player = Player.init(allocator, Point.init(2, 2), 28.0);
     var targetGrid: ?Point = null;
 
+    var tick_timer: f32 = 0;
+
     while (!rl.windowShouldClose()) {
+        const dt = rl.getFrameTime();
+        tick_timer += dt;
+
         rl.beginDrawing();
         defer rl.endDrawing();
 
         rl.clearBackground(rl.Color.ray_white);
-        world.draw();
 
         if (rl.isMouseButtonPressed(rl.MouseButton.left)) {
             const mousePos = rl.getMousePosition();
@@ -70,7 +75,15 @@ pub fn main() !void {
             };
             rl.drawRectangleLinesEx(rect, 2, rl.Color.green);
         }
-        player.update(&world);
+
+        //TICK SYSTEM
+        while (tick_timer >= config.tickDuration) : (tick_timer -= config.tickDuration) {
+            std.debug.print("tick", .{});
+            player.consumeNextPathTile();
+        }
+
+        world.draw();
+        player.updateVisual(dt);
         player.draw(playerTexture);
     }
 }

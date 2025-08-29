@@ -19,9 +19,6 @@ pub const Point = struct {
     }
 };
 
-pub fn chebyshevDistance(a: Point, b: Point) u32 {
-    const dx = @abs(a.x - b.x);
-    const dy = @abs(a.y - b.y);
-
-    return @max(dx, dy);
+pub fn heuristic(a: Point, b: Point) u32 {
+    return @abs(a.x - b.x) + @abs(a.y - b.y);
 }

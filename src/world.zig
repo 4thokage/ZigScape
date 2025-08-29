@@ -10,6 +10,17 @@ pub const TileType = enum {
     Wall, // blocked
 };
 
+const spiralCoords: [11][2]usize = .{
+    // Top wall
+    .{ 0, 0 }, .{ 1, 0 }, .{ 2, 0 }, .{ 3, 0 }, .{ 4, 0 },
+    // Right wall
+    .{ 4, 1 }, .{ 4, 2 }, .{ 4, 3 },
+    // Bottom wall
+    .{ 0, 4 }, .{ 1, 4 },
+    .{ 2, 4 },
+    // Left wall is missing, leaving it open
+};
+
 /// World grid
 pub const World = struct {
     width: usize,
@@ -26,10 +37,10 @@ pub const World = struct {
         }
 
         // Add a test wall rectangle
-        for (5..6) |x| {
-            for (3..10) |y| {
-                tiles[y * width + x] = TileType.Wall;
-            }
+        for (spiralCoords) |coord| {
+            const x = 5 + coord[0];
+            const y = 5 + coord[1];
+            tiles[y * width + x] = TileType.Wall;
         }
 
         return World{

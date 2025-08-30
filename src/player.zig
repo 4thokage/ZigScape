@@ -93,10 +93,14 @@ pub const Player = struct {
         const distance = @sqrt(dx * dx + dy * dy);
 
         if (distance > 0.0) {
-            const move_speed = self.speed * dt;
-            if (move_speed < distance) {
-                self.x += dx / distance * move_speed;
-                self.y += dy / distance * move_speed;
+            // move exactly 1 tile per tick
+            const tilesPerTick: f32 = 1.0;
+            const move_speed = (World.TILE_SIZE * tilesPerTick) / 0.6;
+            const step = move_speed * dt;
+
+            if (step < distance) {
+                self.x += dx / distance * step;
+                self.y += dy / distance * step;
             } else {
                 self.x = target_px;
                 self.y = target_py;
